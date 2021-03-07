@@ -2,15 +2,15 @@ require 'net/http'
 require 'set'
 require 'time'
 
+def redirected(location)
+    warn "redirected to #{location}"
+    fetch(location, limit - 1)
+
 def fetch(uri_str, limit = 10)
     response = Net::HTTP.get_response(URI(uri_str))
     case response
-    when Net::HTTPSuccess then
-      response
-    when Net::HTTPRedirection then
-      location = response['location']
-      warn "redirected to #{location}"
-      fetch(location, limit - 1)
+    when Net::HTTPSuccess then response
+    when Net::HTTPRedirection then redirected(response['location'])
     else
       response.value
     end
@@ -24,5 +24,7 @@ if __FILE__ == $0
     while current_time < stop_time
         fetch('https://gitlab.com')
         current_time = Time.now.to_i
-    end   
+
+        puts current_time - Time.now.to_i
+    end
 end
