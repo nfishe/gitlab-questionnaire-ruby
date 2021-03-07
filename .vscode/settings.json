@@ -1,0 +1,10 @@
+{
+    "ruby.useBundler": true,
+    "ruby.useLanguageServer": true,
+    "ruby.lint": {
+        "rubocop": {
+          "useBundler": true // enable rubocop via bundler
+        },
+      },
+      "ruby.format": "rubocop" // use rubocop for formatting
+}
