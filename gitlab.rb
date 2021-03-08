@@ -1,40 +1,7 @@
 require 'net/http'
-require 'set'
-require 'time'
-
-class Metric
-  attr_reader :name, :duration, :description
-
-  def initialize(name, duration, description: nil)
-    @name        = name
-    @duration    = duration
-    @description = description
-  end
-
-  def to_header
-    "#{name}; dur=#{duration.to_d.truncate(2).to_f};"
-  end
-end
-
-class MetricConverter
-  Stats = Struct.new(:total_call_time, :call_count, :latency) do
-    def update(call_time)
-      self.total_call_time += call_time
-      self.call_count += 1
-    end
-  end
-
-  attr_reader :stats
-
-  def initialize
-    @stats = MetricsStats.new
-  end
-
-  def update; end
-end
 
 def redirected(location)
-  warn "redirected to #{location}"
+  # warn "redirected to #{location}"
   fetch(location)
 end
 
@@ -50,26 +17,49 @@ def fetch(uri_str)
   end
 end
 
-if $PROGRAM_NAME == __FILE__
-  start_time = Time.now.to_i
-  current_time = start_time
-  stop_time = start_time + 5 * 60
+def now
+  Process.clock_gettime(Process::CLOCK_MONOTONIC, :nanosecond)
+end
 
-  converter = MetricConverter.new do
-    call_count
+def record_gitlab(current)
+  response = fetch('https://gitlab.com')
+  elapsed = now - current
+  time = Time.at(0, elapsed, :nsec).nsec
+  duration = time.to_f.truncate(2).to_i
+  puts "dur=#{duration} ns; status=#{response.class.name};"
+
+  duration
+end
+
+class Timer
+  attr_accessor :nanoseconds, :calls
+
+  def initialize(start)
+    @nanoseconds = 0
+    @calls = 0
+    @start = start
   end
-  metrics = []
-  while current_time < stop_time
-    response = fetch('https://gitlab.com')
-    begin
-      converter.update!
-      metric = Metric.new(converter.stats.total_call_time * 1000, { status: response.status })
-      metrics.push(metric.to_header)
-    rescue StandardError => e
-      puts "raised an exception: #{e.message}, #{e.backtrace}"
+
+  def seconds
+    @nanoseconds / (10**9)
+  end
+
+  def run
+    # Maybe interval?
+    start_time = now
+    current_time = start_time
+    while current_time < start_time + @start * (10**9)
+      ns = record_gitlab(current_time)
+      @nanoseconds += ns if ns
+      @calls += 1
+      current_time = now
     end
-    current_time = Time.now.to_i
   end
+end
 
-  puts metrics
+def timer(start)
+  t = Timer.new(start)
+  t.run
+
+  puts "elapsed=#{t.nanoseconds}/#{t.seconds} ns/s, calls=#{t.calls}"
 end
