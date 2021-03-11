@@ -1,3 +1,5 @@
+#!/usr/bin/env ruby
+
 require 'net/http'
 
 def redirected(location)
@@ -64,4 +66,4 @@ def timer(start)
   puts "elapsed=#{t.nanoseconds}/#{t.seconds} ns/s, calls=#{t.calls}"
 end
 
-timer 5 * 60 if __FILE__ == $0
+timer 60 * 5 if $PROGRAM_NAME == __FILE__
